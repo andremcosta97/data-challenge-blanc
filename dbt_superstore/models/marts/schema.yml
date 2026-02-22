@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: "This is the customer dimension table. It contains information about the customers of the superstore."
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_product
+    description: "This is the product dimension table. It contains information about the products sold in the superstore."
+    columns:
+      - name: product_sk
+        tests:
+          - not_null
+          - unique
+  
+  - name: dim_country
+    description: "This is the country dimension table. It contains information about the countries where the superstore operates."
+    columns:
+      - name: country_sk
+        tests:
+          - not_null
+          - unique
+          
+  - name: dim_date
+    description: "This is the date dimension table."
+    columns:
+      - name: date_sk
+        tests:
+          - not_null
+          - unique
+
+  - name: fct__orders
+    columns:
+      - name: order_sk
+        tests:
+          - not_null
+          - unique
+
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+
+      - name: product_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_sk
+
+      - name: country_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_country')
+              field: country_sk
+
+      - name: order_date_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_sk
+
+      - name: ship_date_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_sk
+      
