@@ -10,6 +10,11 @@ WITH date_series AS (
 SELECT
     TO_CHAR(full_date, 'YYYYMMDD')::int AS date_sk,
     full_date,
+    CONCAT(EXTRACT(YEAR FROM full_date), '-', 
+            CASE WHEN EXTRACT(MONTH FROM full_date) < 10 
+                THEN CONCAT('0', CAST(EXTRACT(MONTH FROM full_date) AS TEXT)) 
+                ELSE CAST(EXTRACT(MONTH FROM full_date) AS TEXT) 
+    END) AS year_month,
     EXTRACT(YEAR FROM full_date) AS year,
     EXTRACT(QUARTER FROM full_date) AS quarter,
     EXTRACT(MONTH FROM full_date) AS month,

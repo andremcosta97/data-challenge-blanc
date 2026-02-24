@@ -19,31 +19,53 @@ engine = create_engine_connection()
 if engine:
     st.success("PostgreSQL connection engine created successfully")
     # Example query using pandas
-    query = "SELECT * FROM analytics_marts.fct__orders;"  # update query as needed
-    df = pd.read_sql(query, con=engine, parse_dates=["order_date_sk", "ship_date_sk"])
+    query_fact_orders = """
+    SELECT
+        f.order_id,
+        d.full_date AS order_date,
+        d2.full_date AS ship_date,
+        f.shipping_time_days,
+        f.product_sk,
+        c.country,
+        c.state,
+        c.city,
+        f.ship_mode,
+        f.sales,
+        f.quantity,
+        f.discount,
+        f.profit,
+        f.is_returned
+    FROM analytics_marts.fct__orders f
+    LEFT JOIN analytics_marts.dim_date d
+        ON f.order_date_sk = d.date_sk
+    LEFT JOIN analytics_marts.dim_date d2
+        ON f.ship_date_sk = d2.date_sk
+    Left JOIN analytics_marts.dim_country c
+        ON f.country_sk = c.country_sk
+    """
+    df = pd.read_sql(query_fact_orders, con=engine)
     st.write(df)
 
     # METRIC: TOTAL REVENUE
-    total_revenue_query = "SELECT SUM(sales) AS total_revenue FROM analytics_marts.fct__orders;"
-    total_revenue_df = pd.read_sql(total_revenue_query, con=engine)
-    st.metric(label="Total Revenue", value=f"${total_revenue_df.total_revenue.iloc[0]:,.2f}")
-
-    # METRIC: Total Profit
-    total_profit_query = "SELECT SUM(profit) AS total_profit FROM analytics_marts.fct__orders;"
-    total_profit_df = pd.read_sql(total_profit_query, con=engine)
-    st.metric(label="Total Profit", value=f"${total_profit_df.total_profit.iloc[0]:,.2f}")
-
-    # METRIC: Gross Margin Percentage
-    gross_margin_query = """
-    SELECT 
-        SUM(profit) / SUM(sales) * 100 AS gross_margin_pct
-    FROM analytics_marts.fct__orders;
+    total_metrics_query = """
+    SELECT * 
+    FROM analytics_marts.agg_overall_kpis;
     """
 
-    gross_margin_df = pd.read_sql(gross_margin_query, con=engine)
-    gross_margin = gross_margin_df.gross_margin_pct.iloc[0]
+    total_metrics_df = pd.read_sql(total_metrics_query, con=engine)
 
+    total_revenue = total_metrics_df["total_revenue"][0]
+    total_profit = total_metrics_df["total_profit"][0]
+    total_cost = total_metrics_df["total_cost"][0]
+    gross_margin = total_metrics_df["gross_margin"][0]
+    total_returns = total_metrics_df["total_returns"][0]
+
+    st.metric(label="Total Revenue", value=f"${total_revenue:,}")
+    st.metric(label="Total Profit", value=f"${total_profit:,}")
+    st.metric(label="Total Cost", value=f"${total_cost:,}")
+    st.metric(label="Total Returns", value=f"{total_returns:,}")
     st.metric(label="Gross Margin %", value=f"{gross_margin:.2f}%")
+
 
     ## BAR CHART: TOP 5 Return products
     top_returns_query = """
@@ -71,14 +93,35 @@ if engine:
 
     st.plotly_chart(fig_top_returns_value, use_container_width=True)
 
+    ## LINE PLOT: Monthly Average Shipping Time
+    monthly_shipping_query = """
+    SELECT
+        d.year_month,
+        AVG(f.shipping_time_days) AS avg_shipping_time
+    FROM analytics_marts.fct__orders f
+    LEFT JOIN analytics_marts.dim_date d
+        ON f.order_date_sk = d.date_sk
+    WHERE f.shipping_time_days IS NOT NULL
+    GROUP BY 1
+    ORDER BY 1
+    """
+
+    monthly_shipping_df = pd.read_sql(monthly_shipping_query, con=engine)
+
+    fig_shipping = px.line(
+        monthly_shipping_df,
+        x="year_month",
+        y="avg_shipping_time",
+        title="Monthly Average Shipping Time (Days)",
+        markers=True
+    )
+
+    st.plotly_chart(fig_shipping, use_container_width=True)
+
     ## LINE PLOT: Monthly Sales Trend
     monthly_sales_query = """
     SELECT
-        CONCAT(d.year, '-', 
-            CASE WHEN d.month < 10 
-                THEN CONCAT('0', CAST(d.month AS TEXT)) 
-                ELSE CAST(d.month AS TEXT) 
-            END) AS year_month,
+        d.year_month,
         SUM(f.sales) AS monthly_sales
     FROM analytics_marts.fct__orders f
     LEFT JOIN analytics_marts.dim_date d
@@ -95,11 +138,6 @@ if engine:
         y="monthly_sales",
         title="Monthly Sales Trend",
         markers=True
-    )
-
-    fig_monthly.update_layout(
-        xaxis_title="Month",
-        yaxis_title="Revenue ($)"
     )
 
     st.plotly_chart(fig_monthly, use_container_width=True)

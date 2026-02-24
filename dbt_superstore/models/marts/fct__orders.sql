@@ -7,6 +7,7 @@ SELECT
     p.product_sk,
     d_order.date_sk AS order_date_sk,
     d_ship.date_sk AS ship_date_sk,
+    o.ship_date - o.order_date AS shipping_time_days,
     o.ship_mode,
     o.sales,
     o.profit,
