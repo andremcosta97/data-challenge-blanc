@@ -73,7 +73,7 @@ if engine:
         product_name,
         total_returns,
         return_rate_pct
-    FROM analytics_marts.agg_returns_products
+    FROM analytics_marts.agg_products
     LIMIT 10;
     """
 
