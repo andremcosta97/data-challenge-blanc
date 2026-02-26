@@ -1,5 +1,4 @@
 SELECT
-    distinct
     o.order_sk,
     o.order_id,
     c.customer_id,
